@@ -1,0 +1,234 @@
+﻿be sure to store as UTF-8 or other Unicode
+
+
+
+---------------------------
+
+
+
+Run an external onload script for some documents. Intentionally limited to file URI scheme.
+
+Made to allow processing without need for script reference and onload attribute in the document itself.
+
+First use has been as Adj framework processor for SVG documents. It helps making workflow more passable.
+
+Provides an option to limit operation to URIs matching a regular expression, to avoid unintended runs.
+Provides an option to set script name, relative or absolute.
+Provides an option to set onload script fragment.
+Provides info in Error Console, if you care to look there.
+
+Initially tested with Firefox 13 in Windows. Then, just so it also runs with Firefox 10 in Linux, downgraded to Addon Kit 1.5, from 1.7. One may hope that keeping compatibility will be easy.
+
+Use for SVG documents may have required implementation to use somewhat different techniques than use for HTML documents would have allowed or required.
+
+
+
+---------------------------
+
+
+
+{
+"name":"onload-script-some-document-files",
+"fullName":"Onload Script Some Document Files",
+"preferences":[{
+    "name":"onlyIfURIMatchesRegEx",
+    "title":"Only If URI Matches Regular Expression",
+    "description":"Only if URI matches regular expression. Default is ^file://.*\\.svg$. Note: It cannot get around hard file URI scheme limitation.",
+    "type":"string",
+    "value":"^file://.*\\\\.svg$"
+  },
+  {
+    "name":"scriptNameExpression",
+    "title":"Script Name Expression",
+    "description":"Script name expression is a replacement for a regular expression ^(.*/)(([^/]*?)(\\.[^.]*)?)$ matched to the URI. In $1 captures the directory (with trailing slash), $2 the filename, $3 without extension, $4 the extension. Default is $1.adj-js/adj.js to get .adj-js/adj.js relative to the document. Directory .adj-js can be a symbolic link and version control can be told to ignore it. For an absolute location you'd have to weaken from default same-origin policy for file URIs, which is not a good idea.",
+    "type":"string",
+    "value":"$1.adj-js/adj.js"
+  },
+  {
+    "name":"onloadScriptFragment",
+    "title":"Onload Script Fragment",
+    "description":"Script fragment that will be executed via a temporary onload attribute to the document. Default is Adj.processAdjComments(document);.",
+    "type":"string",
+    "value":"Adj.processAdjComments(document);"
+  }]
+}
+
+
+
+---------------------------
+
+
+
+//
+// Copyright (c) 2012, Nirvana Research
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//     * Neither the name of the copyright holder nor the names of
+//       contributors may be used to endorse or promote products derived from
+//       this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY DIRECT,
+// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+// EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// i.e. Modified BSD License
+//
+// ==============================================================================
+//
+// the main module of the onload-script-some-document-files Add-on
+//
+// ==============================================================================
+//
+// Idea and first implementation - Leo Baschy <srguiwiz12 AT nrvr DOT com>
+//
+
+exports.main = function() {
+
+    var pageModModule = require("page-mod");
+    var data = require("self").data;
+    var matchPatternModule = require("match-pattern");
+    //
+    var pageMod = null;
+    var onlyIfURIMatchesRegEx = "";
+    var scriptNameExpression = "";
+    var onloadScriptFragment = "";
+    
+    var loadOnlyIfURIMatchesRegEx = function loadOnlyIfURIMatchesRegEx () {
+        var prefs = require("simple-prefs").prefs;
+        onlyIfURIMatchesRegEx = prefs.onlyIfURIMatchesRegEx;
+        if (onlyIfURIMatchesRegEx) {
+            onlyIfURIMatchesRegEx = onlyIfURIMatchesRegEx.trim();
+        }
+        if (!onlyIfURIMatchesRegEx) {
+            onlyIfURIMatchesRegEx = "";
+        }
+    };
+    
+    var loadScriptNameExpression = function loadScriptNameExpression () {
+        var prefs = require("simple-prefs").prefs;
+        scriptNameExpression = prefs.scriptNameExpression;
+        if (scriptNameExpression) {
+            scriptNameExpression = scriptNameExpression.trim();
+        }
+        if (!scriptNameExpression) {
+            scriptNameExpression = "";
+        }
+    };
+    
+    var loadOnloadScriptFragment = function loadOnloadScriptFragment () {
+        var prefs = require("simple-prefs").prefs;
+        onloadScriptFragment = prefs.onloadScriptFragment;
+        if (onloadScriptFragment) {
+            onloadScriptFragment = onloadScriptFragment.trim();
+        }
+        if (!onloadScriptFragment) {
+            onloadScriptFragment = "";
+        }
+    };
+
+    // the page-mod
+    // https://addons.mozilla.org/en-US/developers/docs/sdk/latest/packages/addon-kit/page-mod.html
+    var newPageMod = function newPageMod () {
+        var contentScript =
+            "var url = document.URL;" +
+            "console.log('page url matches onload-script-some-document-files ' + url);" +
+            (onlyIfURIMatchesRegEx ?
+            "var onlyIfURIMatchesRegExp = new RegExp(unescape('" + escape(onlyIfURIMatchesRegEx) + "'));" +
+            "var matched = onlyIfURIMatchesRegExp.test(url);"
+            :
+            "var matched = true;") +
+            "if (matched) {" +
+            "  console.log('page url matches URI regular expression ' + unescape('" + escape(onlyIfURIMatchesRegEx) + "'));" +
+            "  var scriptUrlRegExp = /^(.*\\/)(([^\\/]*?)(\\.[^.]*)?)$/;" +
+            "  var scriptUrl = url.replace(scriptUrlRegExp, unescape('" + escape(scriptNameExpression) + "'));" +
+            "  console.log('script would be at ' + scriptUrl);" +
+            "  var scriptRequest = new XMLHttpRequest();" +
+            "  scriptRequest.open('GET', scriptUrl, false);" +
+            "  scriptRequest.overrideMimeType('text/plain');" +
+            "  scriptRequest.send();" +
+            "  var scriptContent = scriptRequest.responseText;" +
+            "  console.log('got script ' + scriptUrl);" +
+            // replace(/--/g, '——') em dash to tolerate <!-- and --> and must reverse before use
+            "  document.appendChild(document.createComment(scriptContent.replace(/--/g, '——')));" +
+            "  document.documentElement.setAttribute('onload'," +
+            "    'console.log(\\'evaluating script\\');" +
+            "     eval(document.lastChild.textContent.replace(/——/g, \\'--\\'));" +
+            "     document.removeChild(document.lastChild);" +
+            "     try {" +
+            "       console.log(\\'starting processing\\');" +
+            "       ' + unescape('" + escape(onloadScriptFragment) + "') + ';" +
+            "     } finally {" +
+            "       document.documentElement.removeAttribute(\\'onload\\');" +
+            "       console.log(\\'removed temporary onload attribute\\');" +
+            "     };" +
+            "    ');" +
+            "} else {" +
+            "  console.log('page url did not match URI regular expression ' + unescape('" + escape(onlyIfURIMatchesRegEx) + "'));" +
+            "}"
+        return pageModModule.PageMod({
+            include: /^file:\/\/.*$/,
+            // would have thought "ready" but "start" needed to actually work in Firefox 13, Addon Kit 1.5
+            contentScriptWhen: "start",
+            contentScript: contentScript
+        });
+    }
+
+    var updatePageMod = function updatePageMod () {
+        if (pageMod) {
+            pageMod.destroy();
+            pageMod = null;
+        }
+        pageMod = newPageMod();
+    }
+
+    var onOnlyIfURIMatchesRegExChange = function onOnlyIfURIMatchesRegExChange () {
+        loadOnlyIfURIMatchesRegEx();
+        updatePageMod();
+    }
+    onOnlyIfURIMatchesRegExChange();
+
+    require("simple-prefs").on("onlyIfURIMatchesRegEx",onOnlyIfURIMatchesRegExChange);
+
+    var onScriptNameExpressionChange = function onScriptNameExpressionChange () {
+        loadScriptNameExpression();
+        updatePageMod();
+    }
+    onScriptNameExpressionChange();
+
+    require("simple-prefs").on("scriptNameExpression",onScriptNameExpressionChange);
+
+    var onOnloadScriptFragmentChange = function onOnloadScriptFragmentChange () {
+        loadOnloadScriptFragment();
+        updatePageMod();
+    }
+    onOnloadScriptFragmentChange();
+
+    require("simple-prefs").on("onloadScriptFragment",onOnloadScriptFragmentChange);
+};
+
+
+
+---------------------------
+
+
+
+^(.*/)(([^/]*?)(\.[^.]*)?)$
+
+file:///C:/somedir/somesubdir/example.svg
+file:///C:/somedir/somesubdir/example.2.svg
+file:///C:/somedir/somesubdir/example.svg
+file:///C:/somedir/somesubdir/example
