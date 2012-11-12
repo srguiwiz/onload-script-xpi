@@ -52,9 +52,9 @@ Use for SVG documents may have required implementation to use somewhat different
   {
     "name":"onloadScriptFragment",
     "title":"Onload Script Fragment",
-    "description":"Script fragment that will be executed via a temporary onload attribute to the document. Default is Adj.processAdjComments(document);.",
+    "description":"Script fragment that will be executed via a temporary onload attribute to the document. Default is Adj.doDoc();.",
     "type":"string",
-    "value":"Adj.processAdjComments(document);"
+    "value":"Adj.doDoc();"
   }]
 }
 
