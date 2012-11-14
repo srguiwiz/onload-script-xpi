@@ -22,8 +22,6 @@ Provides an option to set script name, relative or absolute.
 Provides an option to set onload script fragment.
 Provides info in Error Console, if you care to look there.
 
-Initially tested with Firefox 13 in Windows. Then, just so it also runs with Firefox 10 in Linux, downgraded to Addon Kit 1.5, from 1.7. One may hope that keeping compatibility will be easy.
-
 Use for SVG documents may have required implementation to use somewhat different techniques than use for HTML documents would have allowed or required.
 
 
