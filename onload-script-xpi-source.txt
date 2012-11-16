@@ -243,4 +243,4 @@ file:///C:/somedir/somesubdir/example
 
 
 Designed specifically for use with https://github.com/srguiwiz/adj-js
-as illustrated http://www.nrvr.com/open/adj/adj-js/user-docs/#example-workflow
+as illustrated http://srguiwiz.github.com/adj-js/user-docs/#example-workflow
